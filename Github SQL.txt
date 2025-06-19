@@ -1,0 +1,533 @@
+Case Study #1: Danny's Diner
+
+-- 1. What is the total amount each customer spent at the restaurant?
+
+SELECT customer_id, SUM(price) AS total_amount_spent
+FROM sales s 
+JOIN menu me 
+ON s.product_id = me.product_id
+GROUP BY customer_id
+ORDER BY total_amount_spent DESC
+
+-JOIN the two tables by product_id
+-SUM(price) to find the total amount
+-GROUP BY customer_id 
+
+
+
+
+
+
+-- 2. How many days has each customer visited the restaurant?
+
+SELECT customer_id, COUNT(DISTINCT order_date) AS visit_amount
+FROM sales 
+GROUP BY customer_id
+
+-Counted distinct dates each customer visited the restaurant 
+
+
+
+
+
+
+-- 3. What was the first item from the menu purchased by each customer?
+
+WITH cte1 AS (SELECT DENSE_RANK() OVER (PARTITION BY customer_id ORDER BY order_date) AS rank1, customer_id, order_date, product_name
+FROM sales s
+JOIN menu me
+ON s.product_id = me.product_id
+ORDER BY order_date)
+
+SELECT DISTINCT customer_id, product_name
+FROM cte1
+WHERE rank1 = 1
+
+
+-Made a CTE table to assign a rank to each order based on customer_id and when the order was taken
+-Selected distinct customer_id and product_name to ensure there was no duplicate orders made by each customer
+-Only selected data that was ranked first to ensure only first order is displayed
+
+
+
+
+
+-- 4. What is the most purchased item on the menu and how many times was it purchased by all customers?
+
+SELECT COUNT(*) AS times_ordered, product_name
+FROM sales s
+JOIN menu me
+ON s.product_id = me.product_id
+GROUP BY product_name 
+ORDER BY times_ordered DESC
+LIMIT 1
+
+-Counted how many times each product was ordered and ordered by desc so the highest order was at the top
+
+
+
+
+
+
+-- 5. Which item was the most popular for each customer?
+
+WITH top_orders AS (SELECT DENSE_RANK() OVER (PARTITION BY customer_id ORDER BY COUNT(*) DESC) AS top_rank,customer_id, COUNT(*) AS times_ordered, product_name
+FROM sales s
+JOIN menu me
+ON s.product_id = me.product_id
+GROUP BY customer_id, product_name 
+ORDER BY times_ordered DESC)
+
+SELECT customer_id, product_name, times_ordered
+FROM top_orders
+WHERE top_rank = 1
+ORDER BY customer_id
+
+-Made a CTE table and added a column for how many times each order was made by each customer
+-Used Dense rank to assign ranks to top orderes based on each customer and how many times each order was purchased 
+-Selected only topped ranked data 
+ 
+
+-- 6. Which item was purchased first by the customer after they became a member?
+
+WITH orders_table AS (SELECT mem.customer_id, product_name, ROW_NUMBER() OVER(PARTITION BY mem.customer_id ORDER BY order_date)as order_rank
+FROM sales s
+JOIN members mem
+ON s.customer_id = mem.customer_id
+JOIN menu me 
+ON me.product_id = s.product_id
+WHERE join_date < order_date)
+
+SELECT customer_id, product_name
+FROM orders_table
+WHERE order_rank = 1
+
+
+-Created a CTE that added a column to rank the data based off of who ordered which product and the earliest date ordered after the customer became a member
+-Selected only dates after join date
+
+
+
+-- 7. Which item was purchased just before the customer became a member?
+
+
+WITH orders_table AS (SELECT mem.customer_id, product_name, ROW_NUMBER() OVER(PARTITION BY mem.customer_id ORDER BY order_date desc) as order_rank
+FROM sales s
+JOIN members mem
+ON s.customer_id = mem.customer_id
+JOIN menu me 
+ON me.product_id = s.product_id
+WHERE join_date > order_date)
+
+SELECT customer_id, product_name
+from orders_table
+WHERE order_rank = 1
+
+-Same as last question - changed date to days before join_date
+
+
+
+
+-- 8. What is the total items and amount spent for each member before they became a member?
+
+
+SELECT mem.customer_id, COUNT(*) AS total_items, SUM(price) AS amount_spent
+FROM sales s
+JOIN members mem
+ON s.customer_id = mem.customer_id
+JOIN menu me 
+ON me.product_id = s.product_id
+WHERE join_date> order_date
+GROUP BY mem.customer_id
+ORDER BY customer_id
+
+
+-counted how many items were ordered by each customer and the sum of the price while filtering out days after member join_date
+
+
+
+
+
+
+
+-- 9.  If each $1 spent equates to 10 points and sushi has a 2x points multiplier - how many points would each customer have?
+
+SELECT customer_id, SUM(CASE
+WHEN s.product_id = 1 THEN price*20
+ELSE price*10 END) AS reward_points
+FROM sales s
+JOIN menu me 
+ON me.product_id = s.product_id
+GROUP BY customer_id
+ORDER BY customer_id
+
+-Used CASE WHEN statement to sum price total for each customer - and double the price total for sushi
+
+
+
+
+-- 10. In the first week after a customer joins the program (including their join date) they earn 2x points on all items, not just sushi - how many points do customer A and B have at the end of January?
+
+
+
+SELECT mem.customer_id,SUM(CASE
+WHEN S.product_id = 1 OR
+order_date BETWEEN join_date AND (join_date + 7) THEN price*20
+ELSE price*10 END) AS reward_points
+FROM sales s
+JOIN menu me 
+ON me.product_id = s.product_id
+JOIN members mem
+ON s.customer_id = mem.customer_id
+WHERE EXTRACT(MONTH FROM order_date) = 1
+GROUP BY mem.customer_id
+ORDER BY mem.customer_id
+
+
+- Used CASE WHEN statement to select orders made within a week of member join date or orders that were sushi to be double points while all other orders remained 10x
+
+
+
+
+CASE STUDY 2 PIZZA RUNNER
+
+UPDATED TABLES
+
+WITH updated_customer_orders AS (SELECT order_id, customer_id, pizza_id,CASE
+WHEN exclusions = '' OR exclusions ='null' THEN NULL
+ELSE exclusions END AS exclusions,
+CASE
+WHEN extras = '' OR extras ='null' OR extras ISNULL THEN NULL 
+ELSE extras END AS extras, order_time
+FROM customer_orders)
+
+
+, updated_runner_orders AS (SELECT order_id, runner_id,  CASE 
+WHEN pickup_time = 'null' OR pickup_time = '' THEN NULL
+ELSE pickup_time::TIMESTAMP END AS pickup_time,
+CASE
+WHEN distance = 'null' OR distance = '' THEN NULL
+ELSE TRIM('km' FROM distance)::DECIMAL END AS distance,
+CASE
+WHEN duration = 'null' OR duration = ''  THEN NULL
+WHEN duration LIKE '%mins' THEN TRIM ('mins' FROM duration)::INTEGER
+WHEN duration LIKE '%minutes' THEN TRIM ('minutes' FROM duration)::INTEGER
+WHEN duration LIKE '%minute' THEN TRIM ('minute' FROM duration)::INTEGER
+ELSE duration::INTEGER
+END AS duration,
+CASE
+WHEN cancellation = 'null' OR cancellation = '' THEN NULL
+ELSE cancellation END AS cancellation
+FROM runner_orders)
+
+
+JOIN TABLES CTE
+
+WITH customer_runner_orders AS (SELECT co.*, runner_id, pickup_time, distance, duration, cancellation, pn.pizza_name
+FROM updated_customer_orders co 
+JOIN updated_runner_orders ro 
+ON co.order_id = ro.order_id
+JOIN pizza_names pn
+ON pn.pizza_id = co.pizza_id)
+
+
+
+
+1A. How many pizzas were ordered?
+
+SELECT COUNT(*) AS total_pizza_ordered
+FROM customer_orders
+
+2A. How many unique customer orders were made?
+
+
+unique_order_table AS (SELECT DISTINCT customer_id, order_id
+FROM updated_customer_orders)
+
+SELECT COUNT(*) AS unique_customer_orders
+FROM unique_order_table
+
+
+3A. How many successful orders were delivered by each runner?
+
+
+SELECT runner_id, COUNT(update_pickup_time) AS successful_orders
+FROM updated_runner_orders  
+WHERE update_pickup_time != ''
+GROUP BY runner_id
+ORDER BY runner_id
+
+4A. How many of each type of pizza was delivered?
+
+SELECT pizza_name, COUNT(*) AS pizza_delivered
+FROM customer_runner_orders 
+WHERE cancellation  ISNULL
+GROUP BY pizza_name
+
+5A. How many Vegetarian and Meatlovers were ordered by each customer?
+
+
+SELECT customer_id, SUM(CASE
+WHEN pizza_name = 'Vegetarian' THEN 1 ELSE 0 END) AS num_of_vegetarian,
+SUM(CASE WHEN pizza_name = 'Meatlovers' THEN 1 ELSE 0 END) AS num_of_meatlovers
+FROM customer_runner_orders c
+GROUP BY customer_id
+ORDER BY customer_id
+
+
+6A. What was the maximum number of pizzas delivered in a single order?
+
+SELECT COUNT(*) AS max_delivered_pizzas
+FROM customer_runner_orders
+WHERE cancellation ISNULL
+GROUP BY order_id
+ORDER BY max_delivered_pizzas DESC
+LIMIT 1
+
+7A. For each customer, how many delivered pizzas had at least 1 change and how many had no changes?
+
+SELECT customer_id, SUM (CASE
+WHEN cancellation ISNULL AND exclusions ISNULL AND extras ISNULL THEN 1 ELSE 0 END) AS orders_no_change,
+SUM (CASE WHEN  (exclusions NOTNULL OR extras NOTNULL) AND cancellation ISNULL THEN 1 ELSE 0 END) AS modified_orders
+FROM customer_runner_orders
+GROUP BY customer_id
+ORDER BY customer_id
+
+8A. How many pizzas were delivered that had both exclusions and extras?
+
+SELECT SUM (CASE
+WHEN cancellation ISNULL AND exclusions NOTNULL AND extras NOTNULL THEN 1 ELSE 0 END) AS modified_pizzas_delivered
+FROM customer_runner_orders
+
+
+9A. What was the total volume of pizzas ordered for each hour of the day?
+
+SELECT EXTRACT (HOUR FROM order_time) AS hour, COUNT(*) AS pizzas_ordered
+FROM customer_runner_orders
+GROUP BY hour
+ORDER BY hour
+
+
+10A. What was the volume of orders for each day of the week?
+SELECT TO_CHAR(order_time, 'day') AS day, COUNT(*) AS pizzas_ordered
+FROM customer_runner_orders
+GROUP BY DAY
+
+
+
+
+
+
+1B. How many runners signed up for each 1 week period? (i.e. week starts 2021-01-01)
+
+
+WITH weeks AS (SELECT runner_id, DATE_TRUNC('WEEK',(registration_date + interval '4 day')) - interval '3 day'  AS week
+FROM runners)
+
+SELECT DENSE_RANK() OVER(ORDER BY week) AS week_number, COUNT(*) AS runners_signed_up, week
+FROM weeks 
+GROUP BY week
+
+
+2B. What was the average time in minutes it took for each runner to arrive at the Pizza Runner HQ to pickup the order?
+
+
+SELECT runner_id, ROUND(AVG(EXTRACT(MINUTE FROM pickup_time - order_time))) AS avg_time
+FROM customer_runner_orders
+WHERE pickup_time NOTNULL
+GROUP BY runner_id
+ORDER BY runner_id
+
+
+
+3B. Is there any relationship between the number of pizzas and how long the order takes to prepare?
+
+WITH pizza_time AS (SELECT runner_id, order_id, (EXTRACT(MINUTE FROM pickup_time - order_time)) AS time_to_make,COUNT(pizza_id) AS pizza_ordered
+FROM customer_runner_orders
+WHERE pickup_time NOTNULL
+GROUP BY runner_id, order_id,pickup_time, order_time
+ORDER BY runner_id)
+
+SELECT order_id, ROUND((AVG(time_to_make))/(AVG(pizza_ordered))) AS avg_time_per_pizza, SUM(pizza_ordered) AS total_pizzas_ordered
+FROM pizza_time
+GROUP BY order_id
+ORDER BY order_id
+
+
+
+
+
+
+Case Study #3 - Foodie-Fi
+
+
+1B. How many customers has Foodie-Fi ever had?
+
+SELECT COUNT(DISTINCT customer_id)
+FROM subscriptions
+
+
+
+2B.What is the monthly distribution of trial plan start_date values for our dataset - use the start of the month as the group by value
+
+
+SELECT COUNT(*), EXTRACT(MONTH FROM start_date) as start_month
+FROM subscriptions s
+JOIN plans pl 
+ON pl.plan_id = s.plan_id
+WHERE s.plan_id = 0
+GROUP BY start_month
+ORDER BY start_month
+
+
+
+
+
+3B. What plan start_date values occur after the year 2020 for our dataset? Show the breakdown by count of events for each plan_name
+
+
+SELECT plan_name, COUNT(pl.plan_id) AS start_date_values
+FROM subscriptions s
+JOIN plans pl 
+ON pl.plan_id = s.plan_id
+WHERE EXTRACT(YEAR FROM start_date) > 2020
+GROUP BY plan_name
+
+
+4B. What is the customer count and percentage of customers who have churned rounded to 1 decimal place?
+
+
+SELECT COUNT(customer_id) AS churn_count, ROUND(100.0*COUNT(customer_id) / (SELECT COUNT(DISTINCT customer_id) FROM subscriptions),1) AS churn_percentage
+FROM subscriptions s
+JOIN plans pl 
+ON pl.plan_id = s.plan_id
+WHERE pl.plan_id = 4
+
+5B. How many customers have churned straight after their initial free trial - what percentage is this rounded to the nearest whole number?
+
+
+
+WITH trial_churn_table AS(SELECT ROW_NUMBER() OVER(PARTITION BY customer_id ORDER BY start_date) AS sub_order, s.plan_id AS plan_id_new,*
+FROM subscriptions s
+JOIN plans pl 
+ON pl.plan_id = s.plan_id)
+
+SELECT COUNT(customer_id) AS number_churned, ROUND(100.0*COUNT(customer_id)/(SELECT COUNT(DISTINCT customer_id) FROM subscriptions),1) AS percent_churned
+FROM trial_churn_table
+WHERE sub_order = 2 AND plan_id_new = 4
+
+
+
+6B. What is the number and percentage of customer plans after their initial free trial?
+
+WITH subscription_order_table AS (SELECT ROW_NUMBER() OVER(PARTITION BY customer_id ORDER BY start_date) AS sub_order, s.plan_id AS plan_id_new,*
+FROM subscriptions s
+JOIN plans pl 
+ON pl.plan_id = s.plan_id),
+
+count_of_plans AS (SELECT plan_id_new AS plan_id, plan_name, COUNT(plan_name) AS count_of_plans
+FROM subscription_order_table
+WHERE sub_order = 2
+GROUP BY plan_name, plan_id_new
+ORDER BY plan_id_new)
+
+
+SELECT *, ROUND(100.0*(count_of_plans)/(SELECT COUNT(DISTINCT customer_id)FROM subscriptions),1) AS percent_of_plans
+FROM count_of_plans
+
+
+
+
+7B. What is the customer count and percentage breakdown of all 5 plan_name values at 2020-12-31?
+
+
+WITH plan_values_date AS (SELECT ROW_NUMBER() OVER(PARTITION BY customer_id ORDER BY start_date DESC) AS sub_order, s.plan_id AS plan_id_new,*
+FROM subscriptions s
+JOIN plans pl 
+ON pl.plan_id = s.plan_id
+WHERE start_date <= '2020-12-31')
+
+SELECT plan_id_new AS plan_id, plan_name, COUNT(plan_name) AS count_of_plans, ROUND(100.0*COUNT(plan_name)/(SELECT COUNT(DISTINCT customer_id)FROM subscriptions),1)
+FROM plan_values_date 
+WHERE sub_order = 1
+GROUP BY plan_name, plan_id_new
+ORDER BY plan_id_new
+
+
+
+8B. How many customers have upgraded to an annual plan in 2020?
+
+SELECT COUNT(*) AS customer_upgrade
+FROM subscriptions s
+JOIN plans pl 
+ON pl.plan_id = s.plan_id
+WHERE EXTRACT(YEAR FROM start_date) = 2020 AND s.plan_id = 3
+
+
+9B.How many days on average does it take for a customer to an annual plan from the day they join Foodie-Fi?
+
+WITH annual_plan AS (SELECT *, s.plan_id AS new_plan_id
+FROM subscriptions s
+JOIN plans pl 
+ON pl.plan_id = s.plan_id
+WHERE pl.plan_id = 3)
+
+SELECT ROUND(AVG(ap.start_date - s.start_date),2)
+FROM annual_plan ap
+JOIN subscriptions s
+ON s.customer_id = ap.customer_id AND s.plan_id = (new_plan_id - 3)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Case Study #4 - Data Bank
+
+
+1A.How many unique nodes are there on the Data Bank system?
+
+
+SELECT COUNT(DISTINCT node_id) AS unique_nodes 
+FROM customer_nodes
+
+2A.What is the number of nodes per region?
+
+
+SELECT region_id, COUNT(DISTINCT node_id) AS nodes_per_region
+FROM customer_nodes
+GROUP BY region_id
+
+3A.How many customers are allocated to each region?
+
+SELECT region_name, COUNT(DISTINCT  customer_id) AS nodes_per_region
+FROM customer_nodes cn
+JOIN regions r
+ON cn.region_id = r.region_id
+GROUP BY region_name
+
+
+
+
+
+
