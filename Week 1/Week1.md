@@ -137,7 +137,9 @@ LIMIT 1
 **5. Which item was the most popular for each customer?**
 
 ```SQL
-, top_orders AS (SELECT DENSE_RANK() OVER (PARTITION BY customer_id ORDER BY COUNT(*) DESC) AS top_rank,customer_id, COUNT(*) AS times_ordered, product_name
+, top_orders AS
+(SELECT DENSE_RANK() OVER (PARTITION BY customer_id ORDER BY COUNT(*) DESC) AS top_rank,
+customer_id, COUNT(*) AS times_ordered, product_name
 FROM cte1
 GROUP BY customer_id, product_name 
 ORDER BY times_ordered DESC)
@@ -160,5 +162,44 @@ ORDER BY customer_id
 | B |	sushi |	2 |
 | C |	ramen |	3 |
 
+
+**6. Which item was purchased first by the customer after they became a member?**
+
+```SQL
+, orders_table AS (SELECT customer_id, product_name,
+ROW_NUMBER() OVER(PARTITION BY customer_id ORDER BY order_date)as order_rank
+FROM cte1
+WHERE join_date < order_date)
+
+SELECT customer_id, product_name
+FROM orders_table
+WHERE order_rank = 1
+```
+
+- Created orders_table to create a ranking system
+- Row_number to give each row their own ranking (now two rows will have the same ranking), using parition by to group data by customer_id and ranking them by earliest order date
+- used join_date less than order_date to only select data that was ordered before the member join date
+- Only selected rows with ranking of 1 (which was the earliest date placed before the join date)
+
+
+| customer_id |	product_name |
+| --- | --- |
+| A	 | ramen |
+| B |	sushi |
+
+
+
+**7. Which item was purchased just before the customer became a member?**
+
+```SQL
+, orders_table AS (SELECT customer_id, product_name,
+DENSE_RANK() OVER(PARTITION BY customer_id ORDER BY order_date desc) as order_rank
+FROM cte1
+WHERE join_date > order_date)
+
+SELECT customer_id, product_name
+from orders_table
+WHERE order_rank = 1
+```
 
 
