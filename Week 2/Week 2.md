@@ -243,12 +243,14 @@ LIMIT 1
 
 **7A. For each customer, how many delivered pizzas had at least 1 change and how many had no changes?**
 
+```SQL
 SELECT customer_id, SUM (CASE
 WHEN cancellation ISNULL AND exclusions ISNULL AND extras ISNULL THEN 1 ELSE 0 END) AS orders_no_change,
 SUM (CASE WHEN  (exclusions NOTNULL OR extras NOTNULL) AND cancellation ISNULL THEN 1 ELSE 0 END) AS modified_orders
 FROM customer_runner_orders
 GROUP BY customer_id
 ORDER BY customer_id
+```
 
 
 | customer_id |	orders_no_change |	modified_orders |
