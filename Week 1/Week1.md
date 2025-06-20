@@ -166,8 +166,7 @@ ORDER BY customer_id
 **6. Which item was purchased first by the customer after they became a member?**
 
 ```SQL
-, orders_table AS (SELECT customer_id, product_name,
-ROW_NUMBER() OVER(PARTITION BY customer_id ORDER BY order_date)as order_rank
+, orders_table AS (SELECT *, DENSE_RANK() OVER(PARTITION BY customer_id ORDER BY order_date) as order_rank
 FROM cte1
 WHERE join_date < order_date)
 
@@ -177,8 +176,8 @@ WHERE order_rank = 1
 ```
 
 - Created orders_table to create a ranking system
-- Row_number to give each row their own ranking (now two rows will have the same ranking), using parition by to group data by customer_id and ranking them by earliest order date
-- used join_date less than order_date to only select data that was ordered before the member join date
+- Dense_rank to rank each row, using parition by to group data by customer_id and ranking them by earliest order date
+- used join_date less than order_date to only select data that was ordered after the member join date
 - Only selected rows with ranking of 1 (which was the earliest date placed before the join date)
 
 
@@ -201,5 +200,22 @@ SELECT customer_id, product_name
 from orders_table
 WHERE order_rank = 1
 ```
+
+- Similar code to question 6, only changes include ordering the dates by descending order (most recent date is ranked first) and selecting rows where the join date is after the ordered date
+- By selecting only the rows where the join date is after the order date, ranking the dates by descending we will have the most recent order date before the customer became a memeber
+
+
+
+**8. What is the total items and amount spent for each member before they became a member?**
+
+```SQL
+SELECT customer_id, COUNT(*) AS total_items, SUM(price) AS amount_spent
+FROM cte1
+WHERE join_date > order_date
+GROUP BY customer_id
+ORDER BY customer_id
+```
+
+
 
 
