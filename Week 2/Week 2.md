@@ -223,6 +223,95 @@ ORDER BY customer_id
 
 
 
+**6A. What was the maximum number of pizzas delivered in a single order?**
+
+```SQL
+SELECT COUNT(*) AS max_delivered_pizzas
+FROM customer_runner_orders
+WHERE cancellation ISNULL
+GROUP BY order_id
+ORDER BY max_delivered_pizzas DESC
+LIMIT 1
+```
+
+| max_delivered_pizzas |
+| --- |
+| 3 |
+
+
+
+
+**7A. For each customer, how many delivered pizzas had at least 1 change and how many had no changes?**
+
+SELECT customer_id, SUM (CASE
+WHEN cancellation ISNULL AND exclusions ISNULL AND extras ISNULL THEN 1 ELSE 0 END) AS orders_no_change,
+SUM (CASE WHEN  (exclusions NOTNULL OR extras NOTNULL) AND cancellation ISNULL THEN 1 ELSE 0 END) AS modified_orders
+FROM customer_runner_orders
+GROUP BY customer_id
+ORDER BY customer_id
+
+
+| customer_id |	orders_no_change |	modified_orders |
+| --- | --- | --- |
+| 101 |	2 |	0 |
+| 102 |	3 |	0 |
+| 103 |	0 |	3 |
+| 104 |	1 |	2 |
+| 105 |	0 |	1 |
+
+
+
+**8A. How many pizzas were delivered that had both exclusions and extras?**
+
+```SQL
+SELECT SUM (CASE
+WHEN cancellation ISNULL AND exclusions NOTNULL AND extras NOTNULL THEN 1 ELSE 0 END) AS modified_pizzas_delivered
+FROM customer_runner_orders
+```
+
+
+| modified_pizzas_delivered |
+| --- |
+| 1 |
+
+
+
+
+**9A. What was the total volume of pizzas ordered for each hour of the day?**
+
+```SQL
+SELECT EXTRACT (HOUR FROM order_time) AS hour, COUNT(*) AS pizzas_ordered
+FROM customer_runner_orders
+GROUP BY hour
+ORDER BY hour
+```
+
+| hour |	pizzas_ordered |
+| --- | --- |
+| 11 |	1 |
+| 13 |	3 |
+| 18 |	3 |
+| 19 |	1 |
+| 21 |	3 |
+| 23 |	3 |
+
+
+
+
+**10A. What was the volume of orders for each day of the week?**
+
+```SQL
+SELECT TO_CHAR(order_time, 'day') AS day, COUNT(*) AS pizzas_ordered
+FROM customer_runner_orders
+GROUP BY DAY
+```
+
+| day |	pizzas_ordered |
+| --- | --- |
+| wednesday |	5 |
+| thursday |	3 |
+| friday |	1 |
+| saturday |	5 |
 
 
 
