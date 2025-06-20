@@ -3,23 +3,31 @@
 All data and questions can be found at [Dannys Website.](https://8weeksqlchallenge.com/case-study-1/)
 All solutions have been executed at [DB Fiddle](https://www.db-fiddle.com/f/2rM8RAnq7h5LLDTzZiRWcd/138) using POSTGRE SQL.
 
+
+![image](https://github.com/user-attachments/assets/a05970fa-81b5-425a-b08f-919b8f422741)
+
+
 Below is the relationship diagram and tables for this dataset:
 
-![image](https://github.com/user-attachments/assets/7e1b254a-5d54-48d3-9e81-99c4126f1712)
+![image](https://github.com/user-attachments/assets/9142bb04-41a7-4b37-a07e-81ef6191ef2e)
 
 
-**Table 1: Sales**
-![Image](https://github.com/user-attachments/assets/ebf00e62-89d7-408a-92d2-6c37586fc379)
+
+**Table 1: sales**
+![image](https://github.com/user-attachments/assets/95deca62-7914-4e72-bdd8-c6f2b83c189e)
 
 
-**Table 2: Menu**
 
-![image](https://github.com/user-attachments/assets/68fda723-afd6-4c30-b9e2-f4bc58453d15)
+**Table 2: menu**
+
+![image](https://github.com/user-attachments/assets/24e72907-93ec-42d8-9386-1bc9e5ee06fd)
 
 
-**Table 3: Members**
 
-![image](https://github.com/user-attachments/assets/50ea2cc0-68b1-4e8e-b6aa-d715259932a2)
+**Table 3: members**
+
+![image](https://github.com/user-attachments/assets/96e38959-2a4a-426f-9070-63f8608fd94c)
+
 
 
 Below is the CTE table created from which all answers from this practice are generated:
