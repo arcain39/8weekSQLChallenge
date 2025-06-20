@@ -205,6 +205,13 @@ WHERE order_rank = 1
 - By selecting only the rows where the join date is after the order date, ranking the dates by descending we will have the most recent order date before the customer became a memeber
 
 
+| customer_id |	product_name |
+| --- | ---|
+| A |	sushi |
+| A |	curry |
+| B |	sushi |
+
+
 
 **8. What is the total items and amount spent for each member before they became a member?**
 
@@ -215,6 +222,66 @@ WHERE join_date > order_date
 GROUP BY customer_id
 ORDER BY customer_id
 ```
+
+- Similar to previous two questions, only selected dates where the join date was after the order date, only selecting dates that happened before the customer became a member
+- Used count to count total number of rows to calculate how many items were sole
+- Used sum to calculate sum of prices grouped by the customer_id
+
+| customer_id |	total_items |	amount_spent |
+| --- | --- | ---|
+| A |	2 |	25 |
+| B |	3 |	40 |
+
+
+
+**9.  If each $1 spent equates to 10 points and sushi has a 2x points multiplier - how many points would each customer have?**
+
+
+```SQL
+SELECT customer_id, SUM(CASE
+WHEN product_id = 1 THEN price*20
+ELSE price*10 END) AS reward_points
+FROM cte1
+GROUP BY customer_id
+ORDER BY customer_id
+```
+
+- Used sum(case when) statement to assign a new column with reward points, rows where prodcut_id = 1 (sushi) are given 20 points (double) and everything else is given 10 points
+
+| customer_id |	reward_points |
+| --- | --- |
+| A |	860 |
+| B |	940 |
+| C |	360 |
+
+
+**10. 10. In the first week after a customer joins the program (including their join date) they earn 2x points on all items, not just sushi - how many points do customer A and B have at the end of January?**
+
+
+```SQL
+SELECT customer_id,SUM(CASE
+WHEN product_id = 1 OR
+order_date BETWEEN join_date AND (join_date + 6) THEN price*20
+ELSE price*10 END) AS reward_points
+FROM cte1
+WHERE order_date < '2021-02-01' AND join_date NOTNULL
+GROUP BY customer_id
+ORDER BY customer_id
+```
+
+- Similar to previous question, added OR statement in case when to include dates which were 1 week after the join_date to be double times the points
+- Used where statement to only include data that was ordered before the month of February and join_date NOTNULL to only include customers that are members
+
+
+| customer_id |	reward_points |
+| --- | --- |
+| A |	1370 |
+| B |	820 |
+
+
+
+
+
 
 
 
