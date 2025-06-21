@@ -318,6 +318,23 @@ GROUP BY DAY
 
 
 
+**1B. How many runners signed up for each 1 week period? (i.e. week starts 2021-01-01)**
+
+```SQL
+SELECT DENSE_RANK() OVER(ORDER BY week) AS week_number, COUNT(*) AS runners_signed_up, week
+FROM (SELECT runner_id, DATE_TRUNC('WEEK',(registration_date + interval '4 day')) - interval '3 day'  AS week
+FROM runners) cte2 
+GROUP BY week
+```
+
+| week_number |	runners_signed_up |	week |
+| --- | --- | ---|
+| 1 |	2 |	2021-01-01 00:00:00 |
+| 2 |	1 |	2021-01-08 00:00:00 |
+| 3 |	1 |	2021-01-15 00:00:00 |
+
+
+
 
 
 
