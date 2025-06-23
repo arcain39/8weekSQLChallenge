@@ -334,6 +334,48 @@ GROUP BY week
 | 3 |	1 |	2021-01-15 00:00:00 |
 
 
+**2B. What was the average time in minutes it took for each runner to arrive at the Pizza Runner HQ to pickup the order?**
+
+```SQL
+SELECT runner_id, ROUND(AVG(pickup_order_time)) AS average_TIME
+FROM (SELECT runner_id, order_id, EXTRACT(MINUTE FROM pickup_time - order_time) AS pickup_order_time
+FROM customer_runner_orders
+WHERE pickup_time NOTNULL
+GROUP BY runner_id, order_id, pickup_order_time
+order by order_id) cte2
+GROUP BY runner_id
+ORDER BY runner_id
+```
+
+| runner_id |	average_time |
+| --- | --- |
+| 1 |	14 |
+| 2 |	20 |
+| 3 |	10 |
+
+
+
+**3B. Is there any relationship between the number of pizzas and how long the order takes to prepare?**
+
+```SQL
+, pizza_time AS (SELECT COUNT(order_id) AS number_of_pizzas, AVG(EXTRACT(MINUTE FROM pickup_time - order_time)) AS prep_time
+FROM customer_runner_orders
+WHERE pickup_time NOTNULL
+GROUP BY order_id)
+
+SELECT number_of_pizzas, AVG(prep_time) AS prep_time
+FROM pizza_time
+GROUP BY number_of_pizzas
+```
+
+| number_of_pizzas |	prep_time |
+| --- | --- |
+| 1 |	12 |
+| 2 |	18 |
+| 3 |	29 |
+
+
+
 
 
 
