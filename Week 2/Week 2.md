@@ -449,3 +449,159 @@ ORDER BY runner_id
 | 3 |	50.00 |
 
 
+
+
+## Creation of CTE table pizza_ingredients for part C, including data from pizza_names, pizza_toppings, and pizza_recipes
+
+```SQL
+, pizza_ingredients AS (SELECT pn.*, ingredient, topping_name
+FROM pizza_names pn
+JOIN 
+(SELECT pizza_id, unnest(STRING_TO_ARRAY(toppings, ','))::INTEGER AS ingredient
+FROM pizza_recipes) i
+ON pn.pizza_id = i.pizza_id
+JOIN pizza_toppings pt
+ON pt.topping_id = i.ingredient 
+ORDER BY pizza_id)
+```
+
+| pizza_id |	pizza_name |	ingredient |	topping_name |
+| --- | --- | --- | --- |
+| 1 |	Meatlovers |	2 |	BBQ Sauce |
+| 1 |	Meatlovers |	8 |	Pepperoni |
+| 1 |	Meatlovers |	4 |	Cheese |
+| 1 |	Meatlovers |	10 |	Salami |
+| 1 |	Meatlovers |	5 |	Chicken |
+| 1 |	Meatlovers |	1 |	Bacon |
+| 1 |	Meatlovers |	6 |	Mushrooms |
+| 1 |	Meatlovers |	3 |	Beef |
+| 2 |	Vegetarian |	12 |	Tomato Sauce |
+| 2 |	Vegetarian |	4 |	Cheese |
+| 2 |	Vegetarian |	6 |	Mushrooms |
+| 2 |	Vegetarian |	7 |	Onions |
+| 2 |	Vegetarian |	9 |	Peppers |
+| 2 |	Vegetarian |	11 |	Tomatoes |
+
+
+
+**1C. What are the standard ingredients for each pizza?**
+
+```SQL
+SELECT pizza_name, STRING_AGG(topping_name,', ') AS ingredients
+FROM pizza_ingredients
+GROUP BY pizza_name
+```
+
+| pizza_name |	ingredients |
+| --- | --- |
+| Meatlovers |	BBQ Sauce, Pepperoni, Cheese, Salami, Chicken, Bacon, Mushrooms, Beef |
+| Vegetarian |	Tomato Sauce, Cheese, Mushrooms, Onions, Peppers, Tomatoes |
+
+
+
+**2C. What was the most commonly added extra?**
+
+```SQL
+, unnest_customer_orders AS (SELECT order_id, unnest(STRING_TO_ARRAY(exclusions, ',')) AS exclusions, unnest(STRING_TO_ARRAY(extras, ',')) AS extras
+FROM customer_RUNNER_ORDERS)
+
+SELECT topping_NAME AS most_ordered_extra
+FROM
+(SELECT extras::INTEGER, COUNT(*) AS extras_ordered
+FROM unnest_customer_orders
+WHERE extras NOTNULL
+GROUP BY extras
+ORDER BY extras_ordered DESC
+LIMIT 1) e
+JOIN pizza_toppings pt
+ON extras = topping_id
+```
+
+| most_ordered_extra |
+| --- |
+| Bacon |
+
+
+
+**3C. What was the most common exclusion?**
+
+```SQL
+, unnest_customer_orders AS (SELECT order_id, unnest(STRING_TO_ARRAY(exclusions, ',')) AS exclusions, unnest(STRING_TO_ARRAY(extras, ',')) AS extras
+FROM customer_RUNNER_ORDERS)
+
+SELECT topping_NAME AS most_ordered_extra
+FROM
+(SELECT exclusions::INTEGER, COUNT(*) AS exclusions_ordered
+FROM unnest_customer_orders
+WHERE exclusions NOTNULL
+GROUP BY exclusions
+ORDER BY exclusions_ordered DESC
+LIMIT 1) e
+JOIN pizza_toppings pt
+ON exclusions = topping_id
+```
+
+
+| most_ordered_extra |
+| --- |
+| Cheese |
+
+
+
+**4C. Generate an order item for each record in the customers_orders table in the format of one of the following:**
+
+![image](https://github.com/user-attachments/assets/c501ba05-14fd-4aad-bb7b-e99beefb2076)
+
+
+```SQL
+, order_rank AS (SELECT ROW_NUMBER() OVER (ORDER BY order_id) AS order_number, order_id, customer_id, pizza_id, exclusions, extras
+FROM updated_customer_orders uco)
+
+, unnest_order_rank AS (SELECT order_number, order_id, unnest(STRING_TO_ARRAY(exclusions, ','))::INTEGER AS unnest_exclusions, unnest(STRING_TO_ARRAY(extras, ','))::INTEGER AS unnest_extras
+FROM order_rank)
+
+
+, order_name AS (SELECT o.order_number,  STRING_AGG(pt.topping_name, ', ') AS exclusions_name, STRING_AGG(ptt.topping_name, ', ') AS extras_name
+FROM unnest_order_rank u
+LEFT JOIN pizza_toppings pt
+ON u.unnest_exclusions = pt.topping_id
+LEFT JOIN pizza_toppings ptt
+ON u.unnest_extras = ptt.topping_id
+RIGHT JOIN order_rank o
+ON o.order_number = u.order_number
+GROUP BY o.order_number
+ORDER BY o.order_number)
+
+SELECT order_id, 
+CASE WHEN exclusions_name ISNULL AND extras_name ISNULL THEN pizza_name
+WHEN extras_name ISNULL THEN CONCAT(pizza_name, ' - Exclude ', exclusions_name)
+WHEN exclusions_name ISNULL THEN CONCAT(pizza_name, ' - Extra ', extras_name)
+ELSE CONCAT(pizza_name, ' - Exclude ', exclusions_name, ' - Extra ', extras_name)
+END AS orders
+FROM order_rank o
+JOIN order_name n
+ON o.order_number = n.order_number 
+LEFT JOIN pizza_names pn 
+ON o.pizza_id = pn.pizza_id
+ORDER BY o.order_number
+```
+
+
+| order_id |	orders |
+| --- | --- |
+| 1 |	Meatlovers |
+| 2 |	Meatlovers |
+| 3 |	Meatlovers |
+| 3 |	Vegetarian |
+| 4 |	Meatlovers - Exclude Cheese |
+| 4 |	Meatlovers - Exclude Cheese |
+| 4 |	Vegetarian - Exclude Cheese |
+| 5 |	Meatlovers - Extra Bacon |
+| 6 |	Vegetarian |
+| 7 |	Vegetarian - Extra Bacon |
+| 8 |	Meatlovers |
+| 9 |	Meatlovers - Exclude Cheese - Extra Bacon, Chicken |
+| 10 |	Meatlovers |
+| 10 |	Meatlovers - Exclude BBQ Sauce, Mushrooms - Extra Bacon, Cheese |
+
+
