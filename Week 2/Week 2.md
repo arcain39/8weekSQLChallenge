@@ -375,8 +375,77 @@ GROUP BY number_of_pizzas
 | 3 |	29 |
 
 
+**4B. What was the average distance travelled for each customer?**
+
+```SQL
+SELECT customer_id, ROUND(AVG(distance),2) AS avg_distance
+FROM customer_runner_orders
+GROUP BY customer_id
+ORDER BY customer_id
+```
+
+| customer_id |	avg_distance |
+| --- | --- |
+| 101 |	20.00 |
+| 102 |	16.73 |
+| 103 |	23.40 |
+| 104 |	10.00 |
+| 105 |	25.00 |
 
 
 
+**5B. What was the difference between the longest and shortest delivery times for all orders?**
+
+```SQL
+SELECT MAX(duration) - MIN(duration) AS diff_between_durations
+FROM customer_runner_orders
+```
+
+| diff_between_durations |
+| --- |
+| 30 |
+
+
+
+**6B. What was the average speed for each runner for each delivery and do you notice any trend for these values?**
+
+```SQL
+SELECT runner_id, ROUND(AVG(km_per_hr),2) AS avg_km_per_hr
+FROM(
+SELECT runner_id, order_id, (AVG(distance/duration)*60) AS km_per_hr
+FROM customer_runner_orders
+WHERE cancellation ISNULL
+GROUP BY runner_id, order_id
+ORDER BY runner_id) cte2
+GROUP BY runner_id
+```
+
+| runner_id |	avg_km_per_hr |
+| --- | --- |
+| 1 |	45.54 |
+| 2 |	62.90 |
+| 3 |	40.00 |
+
+
+
+**7B. What is the successful delivery percentage for each runner?**
+
+```SQL
+, cancellation_perc AS (SELECT order_id, runner_id, cancellation
+FROM customer_runner_orders
+GROUP BY order_id, runner_id, cancellation)
+
+SELECT runner_id,  ROUND(100.0*SUM(CASE 
+WHEN cancellation ISNULL THEN 1 ELSE 0 END) / COUNT(*),2) AS successfull_delivery_percentage
+FROM cancellation_perc
+GROUP BY runner_id
+ORDER BY runner_id
+```
+
+| runner_id |	successfull_delivery_percentage |
+| --- | --- |
+| 1 |	100.00 |
+| 2 |	75.00 |
+| 3 |	50.00 |
 
 
