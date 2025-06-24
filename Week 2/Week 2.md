@@ -605,3 +605,83 @@ ORDER BY o.order_number
 | 10 |	Meatlovers - Exclude BBQ Sauce, Mushrooms - Extra Bacon, Cheese |
 
 
+
+
+**5C.Generate an alphabetically ordered comma separated ingredient list for each pizza order from the customer_orders table and add a 2x in front of any relevant ingredients
+For example: "Meat Lovers: 2xBacon, Beef, ... , Salami"**
+
+```SQL
+
+
+, unnest_order_rank AS (SELECT order_number, order_id, unnest(STRING_TO_ARRAY(exclusions, ','))::INTEGER AS unnest_exclusions, unnest(STRING_TO_ARRAY(extras, ','))::INTEGER AS unnest_extras
+FROM
+ (SELECT ROW_NUMBER() OVER (ORDER BY order_id) AS order_number, order_id, customer_id, pizza_id, exclusions, extras
+FROM updated_customer_orders uco) order_rank
+
+,order_with_extras AS (SELECT o.order_id, o.pizza_id, order_number, 
+CASE WHEN extras NOTNULL THEN CONCAT(toppings, ',', extras)
+ELSE toppings END AS new_order
+FROM order_rank o
+RIGHT JOIN pizza_recipes pr
+ON pr.pizza_id  = o.pizza_id)
+
+,exclusions AS (SELECT DISTINCT u.order_number, u.unnest_exclusions
+FROM unnest_order_rank u
+JOIN unnest_order_rank un
+ON u.order_number = un.order_number
+WHERE u.unnest_exclusions NOTNULL)
+
+, final_table AS (SELECT i.*, topping_name, unnest_exclusions
+FROM 
+(SELECT *, unnest(STRING_TO_ARRAY(new_order, ','))::INTEGER AS new_ingredient
+FROM order_with_extras) i 
+JOIN pizza_toppings pt 
+ON pt.topping_id = i.new_ingredient
+LEFT JOIN exclusions e 
+ON e.order_number = i.order_number AND e.unnest_exclusions = i.new_ingredient
+WHERE e.order_number ISNULL)
+
+, two_times as (SELECT order_number, STRING_AGG(two_times,', ') AS extras_name
+FROM (SELECT DISTINCT order_number,
+CASE WHEN COUNT(new_ingredient) = 2 THEN CONCAT('2X: ', topping_name) END AS two_times
+FROM final_table
+GROUP BY order_number, topping_name) tt
+GROUP BY order_number)
+
+, plain_orders AS (SELECT f.order_number, STRING_AGG(topping_name, ',') AS ingredient_list
+FROM final_table f
+LEFT JOIN unnest_order_rank uo
+ON f.order_number = uo.order_number AND f.new_ingredient = uo.unnest_extras
+WHERE uo.unnest_extras ISNULL
+GROUP BY f.order_number)
+
+SELECT po.order_number, 
+CASE WHEN extras_name ISNULL THEN ingredient_list
+ELSE CONCAT(extras_name, ', ', ingredient_list) END AS ingredient_ist
+FROM plain_orders po
+JOIN two_times tt
+ON po.order_number = tt.order_number
+```
+
+| order_number |	ingredient_ist |
+| --- | --- |
+| 1 |	Bacon,BBQ Sauce,Beef,Cheese,Chicken,Mushrooms,Pepperoni,Salami |
+| 2 |	Bacon,BBQ Sauce,Beef,Cheese,Chicken,Mushrooms,Pepperoni,Salami |
+| 3 |	Bacon,BBQ Sauce,Beef,Cheese,Chicken,Mushrooms,Pepperoni,Salami |
+| 4 |	Cheese,Mushrooms,Onions,Peppers,Tomatoes,Tomato Sauce |
+| 5 |	Bacon,BBQ Sauce,Beef,Chicken,Mushrooms,Pepperoni,Salami |
+| 6 |	Bacon,BBQ Sauce,Beef,Chicken,Mushrooms,Pepperoni,Salami |
+| 7 |	Mushrooms,Onions,Peppers,Tomatoes,Tomato Sauce |
+| 8 |	2X: Bacon, BBQ Sauce,Beef,Cheese,Chicken,Mushrooms,Pepperoni,Salami |
+| 9 |	Cheese,Mushrooms,Onions,Peppers,Tomatoes,Tomato Sauce |
+| 10 |	Cheese,Mushrooms,Onions,Peppers,Tomatoes,Tomato Sauce |
+| 11 |	Bacon,BBQ Sauce,Beef,Cheese,Chicken,Mushrooms,Pepperoni,Salami |
+| 12 |	2X: Bacon, 2X: Chicken, BBQ Sauce,Beef,Mushrooms,Pepperoni,Salami |
+| 13 |	Bacon,BBQ Sauce,Beef,Cheese,Chicken,Mushrooms,Pepperoni,Salami |
+| 14 |	2X: Bacon, 2X: Cheese, Beef,Chicken,Pepperoni,Salami |
+
+
+
+**6C. What is the total quantity of each ingredient used in all delivered pizzas sorted by most frequent first?**
+
+
