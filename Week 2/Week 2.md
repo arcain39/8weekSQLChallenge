@@ -613,10 +613,11 @@ For example: "Meat Lovers: 2xBacon, Beef, ... , Salami"**
 ```SQL
 
 
+, order_rank AS (SELECT ROW_NUMBER() OVER (ORDER BY order_id) AS order_number, order_id, customer_id, pizza_id, exclusions, extras
+FROM updated_customer_orders uco)
+
 , unnest_order_rank AS (SELECT order_number, order_id, unnest(STRING_TO_ARRAY(exclusions, ','))::INTEGER AS unnest_exclusions, unnest(STRING_TO_ARRAY(extras, ','))::INTEGER AS unnest_extras
-FROM
- (SELECT ROW_NUMBER() OVER (ORDER BY order_id) AS order_number, order_id, customer_id, pizza_id, exclusions, extras
-FROM updated_customer_orders uco) order_rank
+FROM order_rank)
 
 ,order_with_extras AS (SELECT o.order_id, o.pizza_id, order_number, 
 CASE WHEN extras NOTNULL THEN CONCAT(toppings, ',', extras)
