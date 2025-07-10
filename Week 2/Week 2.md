@@ -685,4 +685,159 @@ ON po.order_number = tt.order_number
 
 **6C. What is the total quantity of each ingredient used in all delivered pizzas sorted by most frequent first?**
 
+-Using final table CTE from above question 
 
+``` SQL
+SELECT topping_name, COUNT(new_ingredient) AS ingredients_ordered
+FROM final_table ft
+GROUP BY topping_name
+ORDER BY ingredients_ordered DESC
+```
+
+
+| topping_name |	ingredients_ordered |
+| --- | --- |
+| Bacon |	14 |
+| Mushrooms |	13 | 
+| Chicken |	11 |
+| Cheese |	11 |
+| Pepperoni |	10 |
+| Salami |	10 |
+| Beef |	10 |
+| BBQ Sauce |	9 |
+| Tomato Sauce |	4 |
+| Onions |	4 |
+| Tomatoes |	4 |
+| Peppers |	4 |
+
+
+
+
+
+**1C. If a Meat Lovers pizza costs $12 and Vegetarian costs $10 and there were no charges for changes - how much money has Pizza Runner made so far if there are no delivery fees?**
+
+```SQL
+SELECT SUM(CASE WHEN pizza_id = 1 THEN 12
+ELSE 10 END) AS total_in_sales
+FROM  customer_runner_orders
+WHERE cancellation ISNULL
+```
+
+
+| total_in_sales |
+| --- |
+| 138 |
+
+
+
+**2C. What if there was an additional $1 charge for any pizza extras?
+Add cheese is $1 extra**
+
+```SQL
+SELECT SUM(CASE WHEN pizza_id = 1 THEN 12
+ELSE 10 END)  + 
+(SELECT SUM(CASE WHEN 
+unnest_extras = 4 THEN 2 ELSE 1 END) AS extra_charge
+FROM unnest_order_rank
+WHERE unnest_extras NOTNULL) AS total_with_extras
+FROM  customer_runner_orders
+WHERE cancellation IS NULL
+```
+
+
+| total_with_extras |
+| --- |
+| 145 |
+
+
+
+**3C. The Pizza Runner team now wants to add an additional ratings system that allows customers to rate their runner, how would you design an additional table for this new dataset - generate a schema for this new table and insert your own data for ratings for each successful customer order between 1 to 5.**
+
+```SQL
+
+CREATE TABLE runner_ratings (
+  runner_id INTEGER,
+  order_id INTEGER,
+  rating INTEGER,
+  feedback TEXT);
+  
+  
+INSERT INTO runner_ratings (order_id, runner_id, rating, feedback) values
+  
+ (1,1,2, 'Pizza took a long time to arrive and was cold'),
+ (2,1,4, 'Good pizza, delivery driver looked like my grandson'),
+(3,1,5, 'Fast delivery, pizza was delicious'),
+(4,2,2, NULL),
+(5,3,5, 'Good pizza, arrived in no time!'),
+(7,2,3,'Food was meh'),
+(8,2,4, 'Yum'),
+(10,1,5, NULL);
+
+SELECT *
+FROM runner_ratings
+```
+
+
+| runner_id |	order_id |	rating	feedback |
+| --- | --- | --- |
+| 1 |	1 |	2 |	Pizza took a long time to arrive and was cold |
+| 1 |	2 |	4 |	Good pizza, delivery driver looked like my grandson |
+| 1 |	3 |	5 |	Fast delivery, pizza was delicious |
+| 2 |	4 |	2 |	null |
+| 3 |	5 |	5 |	Good pizza, arrived in no time! |
+| 2 |	7 |	3 |	Food was meh |
+| 2 |	8 |	4 |	Yum |
+| 1 |	10 |	5 |	null |
+
+
+
+**4C. Using your newly generated table - can you join all of the information together to form a table which has the following information for successful deliveries?
+customer_id
+order_id
+runner_id
+rating
+order_time
+pickup_time
+Time between order and pickup
+Delivery duration
+Average speed
+Total number of pizzas**
+
+```SQL
+SELECT customer_id, cro.order_id, cro.runner_id, rating, order_time, pickup_time, ROUND(AVG(EXTRACT(MINUTE FROM pickup_time - order_time))) AS avg_time_for_pickup, duration AS duration_in_mins, ROUND(AVG((distance/duration)*60)) AS avg_km_per_hr, COUNT(*) as num_of_pizzas
+FROM customer_runner_orders cro
+JOIN runner_ratings rr
+ON rr.order_id = cro.order_id
+GROUP BY customer_id, cro.order_id, cro.runner_id, rating, order_time, pickup_time, duration_in_mins
+ORDER BY customer_id, cro.order_id
+```
+
+| customer_id |	order_id |	runner_id |	rating |	order_time |	pickup_time |	avg_time_for_pickup |	duration_in_mins |	avg_km_per_hr |	num_of_pizzas |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| 101 |	1 |	1 |	2 |	2020-01-01 18:05:02 |	2020-01-01 18:15:34 |	10 |	32 |	38 |	1 |
+| 101 |	2 |	1 |	4 |	2020-01-01 19:00:52 |	2020-01-01 19:10:54 |	10 |	27 |	44 |	1 |
+| 102 |	3 |	1 |	5 |	2020-01-02 23:51:23 |	2020-01-03 00:12:37 |	21 |	20 |	40 |	2 |
+| 102 |	8 |	2 |	4 |	2020-01-09 23:54:33 |	2020-01-10 00:15:02 |	20 |	15 |	94 |	1 |
+| 103 |	4 |	2 |	2 |	2020-01-04 13:23:46 |	2020-01-04 13:53:03 |	29 |	40 |	35 |	3 |
+| 104 |	5 |	3 |	5 |	2020-01-08 21:00:29 |	2020-01-08 21:10:57 |	10 |	15 |	40 |	1 |
+| 104 |	10 |	1 |	5 |	2020-01-11 18:34:49 |	2020-01-11 18:50:20 |	15 |	10 |	60 |	2 |
+| 105 |	7 |	2 |	3 |	2020-01-08 21:20:29 |	2020-01-08 21:30:45 |	10 |	25 |	60 |	1 |
+
+
+
+**5C. If a Meat Lovers pizza was $12 and Vegetarian $10 fixed prices with no cost for extras and each runner is paid $0.30 per kilometre traveled - how much money does Pizza Runner have left over after these deliveries?**
+
+```SQL
+SELECT SUM(CASE WHEN pizza_id = 1 THEN 12
+WHEN pizza_id = 2 THEN 10 END) - (SELECT SUM(distance*.3) AS cost_per_km
+FROM 
+(SELECT DISTINCT order_id, runner_id, distance
+FROM customer_runner_orders) i) AS money_left_over
+FROM customer_runner_orders
+WHERE cancellation ISNULL
+```
+
+
+| money_left_over |
+| --- |
+| 94.44 |
