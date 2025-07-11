@@ -200,3 +200,26 @@ WHERE EXTRACT(YEAR FROM start_date) = 2020 AND plan_id = 3
 | --- |
 | 195 |
 
+
+
+**9B.How many days on average does it take for a customer to an annual plan from the day they join Foodie-Fi?**
+
+```SQL
+, annual_plan AS (SELECT cte1.*, cte2.start_date AS annual_date
+FROM CTE cte1
+JOIN CTE cte2
+ON cte1.plan_id = cte2.plan_id - 3 AND cte1.customer_id = cte2.customer_id
+WHERE cte2.plan_id = 3
+ORDER BY cte1.customer_id
+)
+
+SELECT ROUND(AVG(annual_date - start_date),2) AS avg_days_to_upgrade
+FROM annual_plan ap
+```
+
+
+| avg_days_to_upgrade |
+| --- |
+| 104.62 |
+
+
