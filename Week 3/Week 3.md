@@ -142,4 +142,61 @@ FROM trial_churn_table
 
 
 
+**6B. What is the number and percentage of customer plans after their initial free trial?**
+
+```SQL
+, subscription_order_table AS (SELECT ROW_NUMBER() OVER(PARTITION BY customer_id ORDER BY start_date) AS sub_order, *
+FROM CTE)
+
+SELECT plan_id, plan_name, COUNT(*) AS number_of_plans, 100 * COUNT(*) / (SELECT COUNT(*) FROM subscription_order_table WHERE sub_order = 2) AS percentage_of_plans
+FROM subscription_order_table
+WHERE sub_order = 2
+GROUP BY plan_id, plan_name
+```
+
+
+| plan_id |	plan_name |	number_of_plans |	percentage_of_plans |
+| --- | --- | --- | --- |
+| 1 |	basic monthly |	546 |	54 |
+| 2 |	pro monthly |	325 |	32 |
+| 3 |	pro annual |	37 |	3 |
+| 4 |	churn |	92 |	9 |
+
+
+
+**7B. What is the customer count and percentage breakdown of all 5 plan_name values at 2020-12-31?**
+
+```SQL
+, plan_values_date AS (SELECT ROW_NUMBER() OVER(PARTITION BY customer_id ORDER BY start_date DESC) AS sub_order,*
+FROM CTE
+WHERE start_date <= '2020-12-31')
+
+SELECT plan_id, plan_name, COUNT(plan_name) AS count_of_plans, ROUND(100.0*COUNT(plan_name)/(SELECT COUNT(DISTINCT customer_id)FROM subscriptions),1)
+FROM plan_values_date 
+WHERE sub_order = 1
+GROUP BY plan_name, plan_id
+ORDER BY plan_id
+```
+
+| plan_id |	plan_name |	count_of_plans |	round |
+| --- | --- | --- | ---
+| 0 |	trial |	19 |	1.9 |
+| 1 |	basic monthly |	224 |	22.4 |
+| 2 |	pro monthly |	326 |	32.6 |
+| 3 |	pro annual |	195 |	19.5 |
+| 4 |	churn |	236 |	23.6 |
+
+
+**8B. How many customers have upgraded to an annual plan in 2020?**
+
+```SQL
+SELECT COUNT(*) AS customer_upgrade
+FROM CTE
+WHERE EXTRACT(YEAR FROM start_date) = 2020 AND plan_id = 3
+```
+
+
+| customer_upgrade |
+| --- |
+| 195 |
 
