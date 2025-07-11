@@ -61,6 +61,7 @@ FROM CTE
 ```
 
 | total_num_of_customers |
+| --- |
 | 1000 |
 
 
