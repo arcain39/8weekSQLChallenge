@@ -93,4 +93,53 @@ ORDER BY start_month
 
 
 
+**3B. What plan start_date values occur after the year 2020 for our dataset? Show the breakdown by count of events for each plan_name**
+
+```SQL
+SELECT plan_name, COUNT(plan_id) AS start_date_values
+FROM CTE
+WHERE EXTRACT(YEAR FROM start_date) > 2020
+GROUP BY plan_name
+ORDER BY start_date_values
+```
+
+| plan_name |	start_date_values |
+| --- | --- |
+| basic monthly |	8 |
+| pro monthly |	60 |
+| pro annual |	63 |
+| churn |	71 |
+
+
+
+**4B. What is the customer count and percentage of customers who have churned rounded to 1 decimal place?**
+
+```SQL
+SELECT COUNT(customer_id) AS churn_count, ROUND(100.0*COUNT(customer_id) / (SELECT COUNT(DISTINCT customer_id) FROM subscriptions),1) AS churn_percentage
+FROM CTE
+WHERE plan_id = 4
+```
+
+| churn_count |	churn_percentage |
+| --- | --- |
+| 307 |	30.7 |
+
+
+
+**5B. How many customers have churned straight after their initial free trial - what percentage is this rounded to the nearest whole number?**
+
+```SQL
+, trial_churn_table AS(SELECT ROW_NUMBER() OVER(PARTITION BY customer_id ORDER BY start_date) AS sub_order, *
+FROM CTE)
+
+SELECT ROUND(100.0 * SUM(CASE WHEN sub_order = 2 AND plan_id = 4 THEN 1 ELSE 0 END) / COUNT(DISTINCT customer_id), 1) AS percent_churned
+FROM trial_churn_table
+```
+
+| percent_churned |
+| --- |
+| 9.2 |
+
+
+
 
