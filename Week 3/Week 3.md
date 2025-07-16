@@ -217,9 +217,65 @@ SELECT ROUND(AVG(annual_date - start_date),2) AS avg_days_to_upgrade
 FROM annual_plan ap
 ```
 
-
 | avg_days_to_upgrade |
 | --- |
 | 104.62 |
+
+
+
+**10B. Can you further breakdown this average value into 30 day periods (i.e. 0-30 days, 31-60 days etc)**
+
+```SQL
+, annual_plan AS (SELECT *
+FROM CTE
+WHERE plan_id = 3)
+
+, cte1 AS (SELECT (ap.start_date - s.start_date) as date_diff
+FROM annual_plan ap
+JOIN subscriptions s
+ON s.customer_id = ap.customer_id AND s.plan_id = (ap.plan_id - 3))
+
+
+, cte2 AS (SELECT date_diff, ((date_diff - 1) / 30) * 30 + 1 as beg_date, (((date_diff - 1) / 30) * 30) + 30 as end_date
+FROM cte1)
+
+SELECT beg_date || ' - ' || end_date AS days, COUNT(*) AS number_of_upgrades
+FROM cte2
+GROUP BY days, beg_date
+ORDER BY beg_date
+```
+
+| days |	number_of_upgrades |
+| --- | --- |
+| 1 - 30 | 49 |
+| 31 - 60 |	24 |
+| 61 - 90 |	34 |
+| 91 - 120 |	35 |
+| 121 - 150 |	42 |
+| 151 - 180 |	36 |
+| 181 - 210 |	26 |
+| 211 - 240 |	4 |
+| 241 - 270 |	5 |
+| 271 - 300 |	1 |
+| 301 - 330 |	1 |
+| 331 - 360 |	1 |
+
+
+**11B. How many customers downgraded from a pro monthly to a basic monthly plan in 2020?**
+
+```SQL
+, annual_plan AS (SELECT *, DENSE_RANK () OVER (PARTITION BY customer_id ORDER BY start_date DESC) AS order_rank
+FROM CTE)
+
+SELECT SUM(CASE WHEN plan_id = 1 AND order_rank = 1 AND 
+plan_id = 2 AND order_rank = 2 THEN 1
+ELSE 0 END) AS customers_downgraded
+FROM annual_plan
+```
+
+| customers_downgraded |
+| --- |
+| 0 |
+
 
 
