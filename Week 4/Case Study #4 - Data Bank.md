@@ -110,3 +110,44 @@ FROM cte2
 | average_node_change_in_days |
 | --- |
 | 18.82 |
+
+
+
+
+
+**1B. What is the unique count and total amount for each transaction type?**
+
+```
+SELECT txn_type, COUNT(txn_type) AS number_of_transactions, SUM(txn_amount) AS total_transactions
+FROM customer_transactions
+GROUP BY txn_type
+```
+
+| txn_type |	number_of_transactions |	total_transactions |
+| --- | --- | --- |
+| purchase |	1617 |	806537 |
+| deposit |	2671 |	1359168 |
+| withdrawal |	1580 |	793003 |
+
+
+
+**2B.What is the average total historical deposit counts and amounts for all customers?**
+
+```SQL
+SELECT ROUND(1.0*(SELECT COUNT(*) FROM customer_transactions WHERE txn_type = 'deposit') / COUNT (DISTINCT customer_id),2) AS historical_counts, ROUND(1.0*(SELECT SUM(txn_amount) FROM customer_transactions WHERE txn_type = 'deposit') / COUNT (DISTINCT customer_id),2) AS avg_degposit_amount
+FROM customer_transactions
+```
+
+
+| historical_counts |	avg_degposit_amount |
+| --- | --- |
+| 5.34 |	2718.34 |
+
+
+
+**3B.For each month - how many Data Bank customers make more than 1 deposit and either 1 purchase or 1 withdrawal in a single month?**
+
+
+
+
+
