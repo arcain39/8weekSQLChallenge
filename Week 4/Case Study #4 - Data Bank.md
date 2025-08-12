@@ -147,6 +147,31 @@ FROM customer_transactions
 
 **3B.For each month - how many Data Bank customers make more than 1 deposit and either 1 purchase or 1 withdrawal in a single month?**
 
+```SQL
+WITH cte1 AS (SELECT customer_id, EXTRACT(month FROM txn_date) AS month_date,
+CASE WHEN txn_type = 'deposit' THEN 1 ELSE 0 END AS deposit,
+CASE WHEN txn_type = 'purchase' THEN 1 ELSE 0 END AS purchase,               
+CASE WHEN txn_type = 'withdrawal' THEN 1 ELSE 0 END AS withdrawal   
+FROM customer_transactions
+ORDER BY customer_id)
+
+SELECT month_date, SUM(CASE WHEN num_deposit > 1 AND (num_purchase > 0 OR num_withdrawal > 0) THEN 1 ELSE 0 END) AS number_or_transactions
+FROM (
+SELECT customer_id, month_date, SUM(deposit) AS num_deposit, SUM(purchase) AS num_purchase, SUM(withdrawal) AS num_withdrawal
+FROM cte1
+GROUP BY customer_id, month_date
+ORDER BY customer_id, month_date) cte
+GROUP BY month_date
+ORDER BY month_date
+```
+
+
+| month_date |	number_or_transactions |
+| --- | --- |
+| 1 |	168 |
+| 2 |	181 |
+| 3 |	192 |
+| 4 |	70 |
 
 
 
