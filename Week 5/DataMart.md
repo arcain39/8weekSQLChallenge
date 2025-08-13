@@ -28,3 +28,31 @@ Table 1: Data Mart Weekly Sales (only 10 rows shown)
 
 
 
+##Part 1 - Also creation of CTE
+
+```SQL
+SELECT TO_DATE(week_date, 'DD-MM-YY') AS converted_date, 
+EXTRACT(week FROM TO_DATE(week_date, 'DD-MM-YY')) AS week_number,
+EXTRACT(month FROM TO_DATE(week_date, 'DD-MM-YY')) AS month_number,
+EXTRACT(year  FROM TO_DATE(week_date, 'DD-MM-YY')) AS year_number,
+region, platform, segment,
+CASE WHEN segment LIKE '%1%' THEN 'Young Adults'
+WHEN segment LIKE '%2%' THEN 'Middle Aged'
+WHEN segment LIKE '%3%' THEN 'Retirees'
+WHEN segment LIKE '%4%' THEN 'Retirees' 
+ELSE 'unknown' END AS age_brand,
+CASE WHEN segment LIKE 'F%' THEN 'Families'
+WHEN segment LIKE 'C%' THEN 'Couples' 
+ELSE 'unknown' END AS demographic,
+transactions, sales, ROUND(1.0*sales/transactions, 2) AS avg_transactions
+FROM data_mart.weekly_sales
+LIMIT 5;
+```
+
+| converted_date |	week_number |	month_number |	year_number |	region |	platform |	segment |	age_brand |	demographic |	transactions |	sales |	avg_transactions |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| 2020-08-31 |	36 |	8 |	2020 |	ASIA |	Retail |	C3 |	Retirees |	Couples |	120631 |	3656163 |	30.31 |
+| 2020-08-31 |	36 |	8 |	2020 |	ASIA |	Retail |	F1 |	Young Adults |	Families |	31574 |	996575 |	31.56 |
+| 2020-08-31 |	36 |	8 |	2020 |	USA |	Retail |	null |	unknown |	unknown |	529151 |	16509610 |	31.20 |
+| 2020-08-31 |	36 |	8 |	2020 |	EUROPE |	Retail |	C1 |	Young Adults |	Couples |	4517 |	141942 |	31.42 |
+| 2020-08-31 |	36 |	8 |	2020 |	AFRICA |	Retail |	C2 |	Middle Aged |	Couples |	58046 |	1758388 |	30.29 |
