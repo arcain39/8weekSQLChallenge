@@ -201,6 +201,7 @@ FROM cte2)cte0
 (Full data set not shown)
 
 | customer_id |	current_month	total |
+|--- | --- |
 | 1 |	1 |	312 |
 | 1 |	2 |	312 |
 | 1 |	3 |	-640 |
@@ -221,5 +222,6 @@ FROM cte2)cte0
 | 5 |	2 |	954 |
 | 5 |	3 |	-1923 |
 | 5 |	4 |	-2413 |
+
 
 
