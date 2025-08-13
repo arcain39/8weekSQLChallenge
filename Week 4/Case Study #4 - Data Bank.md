@@ -201,7 +201,7 @@ FROM cte2)cte0
 (Full data set not shown)
 
 | customer_id |	current_month	total |
-|--- | --- |
+|--- | --- | --- |
 | 1 |	1 |	312 |
 | 1 |	2 |	312 |
 | 1 |	3 |	-640 |
@@ -225,3 +225,41 @@ FROM cte2)cte0
 
 
 
+**5B.What is the percentage of customers who increase their closing balance by more than 5%?**
+
+First three tables are from previous answer
+
+```SQL
+WITH cte1 AS (SELECT customer_id, EXTRACT(month FROM txn_date) AS month_date,
+SUM(CASE WHEN txn_type = 'deposit' THEN txn_amount ELSE 0 END) AS deposit,
+SUM(CASE WHEN txn_type = 'purchase' THEN txn_amount ELSE 0 END) AS purchase,    
+SUM(CASE WHEN txn_type = 'withdrawal' THEN txn_amount ELSE 0 END) AS withdrawal   
+FROM customer_transactions
+GROUP BY customer_id, month_date
+ORDER BY customer_id)
+
+, cte2 AS (SELECT customer_id, month_date, LEAD(month_date) OVER (ORDER BY customer_id, month_date) AS next_month,
+SUM(total_per_month) OVER (PARTITION BY customer_id ORDER BY customer_id, month_date ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) AS total
+from (
+SELECT customer_id, month_date, deposit - purchase - withdrawal AS total_per_month
+FROM cte1
+ORDER BY customer_id, month_date) cte)
+
+,cte3 AS (SELECT customer_id, current_month, total 
+FROM
+(SELECT *, GENERATE_SERIES(month_date::INTEGER, CASE WHEN month_date = next_month - 1 OR month_date = 4 OR next_month ISNULL THEN month_date::INTEGER ELSE month_date::INTEGER + 1 END) AS current_month
+FROM cte2)cte0)
+
+,cte4 AS (SELECT ct.customer_id, ct.current_month AS month_1, ct.total AS month_1_total, ctt.current_month AS month_4, ctt.total AS month_4_total
+FROM cte3 ct
+JOIN cte3 ctt ON 
+ct.customer_id = ctt.customer_id AND ct.current_month = ctt.current_month - 3
+WHERE ct.current_month = 1 OR ct.current_month = 4)
+
+SELECT ROUND(100 * SUM (CASE WHEN month_4_total > month_1_total + (month_1_total * .05) THEN 1 ELSE 0 END) / COUNT(*),2) AS percent_total
+FROM cte4
+```
+
+| percent_total |
+| --- |
+| 33.00 |
