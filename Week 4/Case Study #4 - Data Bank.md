@@ -174,5 +174,52 @@ ORDER BY month_date
 | 4 |	70 |
 
 
+**4B.What is the closing balance for each customer at the end of the month?**
+
+```SQL
+WITH cte1 AS (SELECT customer_id, EXTRACT(month FROM txn_date) AS month_date,
+SUM(CASE WHEN txn_type = 'deposit' THEN txn_amount ELSE 0 END) AS deposit,
+SUM(CASE WHEN txn_type = 'purchase' THEN txn_amount ELSE 0 END) AS purchase,    
+SUM(CASE WHEN txn_type = 'withdrawal' THEN txn_amount ELSE 0 END) AS withdrawal   
+FROM customer_transactions
+GROUP BY customer_id, month_date
+ORDER BY customer_id)
+
+, cte2 AS (SELECT customer_id, month_date, LEAD(month_date) OVER (ORDER BY customer_id, month_date) AS next_month,
+SUM(total_per_month) OVER (PARTITION BY customer_id ORDER BY customer_id, month_date ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) AS total
+from (
+SELECT customer_id, month_date, deposit - purchase - withdrawal AS total_per_month
+FROM cte1
+ORDER BY customer_id, month_date) cte)
+
+SELECT customer_id, current_month, total 
+FROM
+(SELECT *, GENERATE_SERIES(month_date::INTEGER, CASE WHEN month_date = next_month - 1 OR month_date = 4 OR next_month ISNULL THEN month_date::INTEGER ELSE month_date::INTEGER + 1 END) AS current_month
+FROM cte2)cte0
+```
+
+(Full data set not shown)
+
+| customer_id |	current_month	total |
+| 1 |	1 |	312 |
+| 1 |	2 |	312 |
+| 1 |	3 |	-640 |
+| 1 |	4 |	-640 |
+| 2 |	1 |	549 |
+| 2 |	2 |	549 |
+| 2 |	3 |	610 |
+| 2 |	4 |	610 |
+| 3 |	1 |	144 |
+| 3 |	2 |	-821 |
+| 3 |	3 |	-1222 |
+| 3 |	4 |	-729 |
+| 4 |	1 |	848 |
+| 4 |	2 |	848 |
+| 4 |	3 |	655 |
+| 4 |	4 |	655 |
+| 5 |	1 |	954 |
+| 5 |	2 |	954 |
+| 5 |	3 |	-1923 |
+| 5 |	4 |	-2413 |
 
 
