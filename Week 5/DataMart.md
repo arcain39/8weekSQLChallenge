@@ -137,3 +137,68 @@ Only showing results for Africa
 | AFRICA |	7 |	1960219710 |
 | AFRICA |	8 |	1809596890 |
 | AFRICA |	9 |	276320987 |
+
+
+*5B.What is the total count of transactions for each platform**
+
+```SQL
+SELECT platform, SUM(transactions) AS total_transactions
+FROM cte1
+GROUP BY platform
+```
+
+| platform |	total_transactions |
+| --- | --- |
+| Shopify |	5925169 |
+| Retail |	1081934227 |
+
+
+**6B.What is the percentage of sales for Retail vs Shopify for each month?**
+
+```SQL
+, cte2 AS (SELECT platform, month_number, SUM(sales) AS total_sales,
+RANK() OVER(PARTITION BY month_number ORDER BY month_number, platform) AS rank_order
+FROM cte1
+GROUP BY platform, month_number
+ORDER BY month_number)
+
+SELECT ct.month_number, ROUND(100.0*ct.total_sales / (ct.total_sales + ctt.total_sales),2) AS percent_sales_retail,
+ROUND(100.0*ctt.total_sales/ (ct.total_sales + ctt.total_sales),2) AS percent_sales_shopify
+FROM cte2 ct
+JOIN cte2 ctt ON 
+ct.month_number = ctt.month_number AND ct.rank_order = ctt.rank_order - 1
+```
+
+| month_number |	percent_sales_retail |	percent_sales_shopify |
+| --- | --- | --- |
+| 3 |	97.54 |	2.46 |
+| 4 |	97.59 |	2.41 |
+| 5 |	97.30 |	2.70 |
+| 6 |	97.27 |	2.73 |
+| 7 |	97.29 |	2.71 |
+| 8 |	97.08 |	2.92 |
+| 9 |	97.38 |	2.62 |
+
+
+**7B.What is the percentage of sales by demographic for each year in the dataset?**
+
+```SQL
+, cte2 AS (SELECT year_number, SUM(CASE WHEN demographic = 'Couples' THEN sales ELSE 0 END) AS Couples,
+SUM(CASE WHEN demographic = 'Families' THEN sales ELSE 0 END) AS Families,
+SUM(CASE WHEN demographic = 'unknown' THEN sales ELSE 0 END) AS unknown
+FROM cte1 ct
+GROUP BY year_number)
+
+SELECT year_number, SUM(ROUND(100.0*couples / (couples + families + unknown),2)) AS couples_sales, 
+SUM(ROUND(100.0*families / (couples + families + unknown),2)) AS families_sales,
+SUM(ROUND(100.0*unknown / (couples + families + unknown),2)) AS unknown_sales
+FROM cte2
+GROUP BY year_number
+```
+
+
+| year_number |	couples_sales |	families_sales |	unknown_sales |
+| --- | --- | --- | --- |
+| 2018 |	26.38 |	31.99 |	41.63 |
+| 2019 |	27.28 |	32.47 |	40.25 |
+| 2020 |	28.72 |	32.73 |	38.55 |
