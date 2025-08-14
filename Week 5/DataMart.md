@@ -31,7 +31,7 @@ Table 1: Data Mart Weekly Sales (only 10 rows shown)
 ##Part 1 - Also creation of CTE
 
 ```SQL
-SELECT TO_DATE(week_date, 'DD-MM-YY') AS converted_date, 
+SELECT TO_DATE(week_date, 'DD-MM-YY') AS new_week_date, 
 EXTRACT(week FROM TO_DATE(week_date, 'DD-MM-YY')) AS week_number,
 EXTRACT(month FROM TO_DATE(week_date, 'DD-MM-YY')) AS month_number,
 EXTRACT(year  FROM TO_DATE(week_date, 'DD-MM-YY')) AS year_number,
@@ -49,10 +49,91 @@ FROM data_mart.weekly_sales
 LIMIT 5;
 ```
 
-| converted_date |	week_number |	month_number |	year_number |	region |	platform |	segment |	age_brand |	demographic |	transactions |	sales |	avg_transactions |
+| new_week_date |	week_number |	month_number |	year_number |	region |	platform |	segment |	age_brand |	demographic |	transactions |	sales |	avg_transactions |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | 2020-08-31 |	36 |	8 |	2020 |	ASIA |	Retail |	C3 |	Retirees |	Couples |	120631 |	3656163 |	30.31 |
 | 2020-08-31 |	36 |	8 |	2020 |	ASIA |	Retail |	F1 |	Young Adults |	Families |	31574 |	996575 |	31.56 |
 | 2020-08-31 |	36 |	8 |	2020 |	USA |	Retail |	null |	unknown |	unknown |	529151 |	16509610 |	31.20 |
 | 2020-08-31 |	36 |	8 |	2020 |	EUROPE |	Retail |	C1 |	Young Adults |	Couples |	4517 |	141942 |	31.42 |
 | 2020-08-31 |	36 |	8 |	2020 |	AFRICA |	Retail |	C2 |	Middle Aged |	Couples |	58046 |	1758388 |	30.29 |
+
+
+**1B.What day of the week is used for each week_date value?**
+
+```SQL
+SELECT DISTINCT TO_CHAR(new_week_date, 'Day') AS day_of_week
+FROM cte1
+```
+
+| day_of_week |
+| --- |
+| Monday |
+
+
+
+**2B.What range of week numbers are missing from the dataset?**
+
+```SQL
+SELECT week_numbers AS missing_weeks
+FROM cte1 ct
+RIGHT JOIN (
+SELECT *
+FROM GENERATE_SERIES(1,52) AS week_numbers)ctt
+ON ct.week_number = ctt.week_numbers
+WHERE week_number ISNULL
+ORDER BY week_numbers
+```
+Only first 10 rows shown
+
+| missing_weeks |
+| --- |
+| 1 |
+| 2 |
+| 3 |
+| 4 |
+| 5 |
+| 6 |
+| 7 |
+| 8 |
+| 9 |
+| 10 |
+
+
+**3B.How many total transactions were there for each year in the dataset?**
+
+```SQL
+SELECT year_number, SUM(transactions) AS trnsactions_per_year
+FROM cte1
+GROUP BY year_number
+ORDER BY year_number
+```
+
+
+| year_number |	trnsactions_per_year |
+| --- | --- |
+| 2018 | 346406460 |
+| 2019 | 365639285 |
+| 2020 | 375813651 |
+
+
+
+**4B.What is the total sales for each region for each month?**
+
+```SQL
+SELECT region, month_number, SUM(sales) AS total_sales
+FROM cte1
+GROUP BY region, month_number 
+ORDER BY region, month_number
+```
+
+Only showing results for Africa
+
+| region |	month_number |	total_sales |
+| --- | --- | --- |
+| AFRICA |	3 |	567767480 |
+| AFRICA |	4 |	1911783504 |
+| AFRICA |	5 |	1647244738 |
+| AFRICA |	6 |	1767559760 |
+| AFRICA |	7 |	1960219710 |
+| AFRICA |	8 |	1809596890 |
+| AFRICA |	9 |	276320987 |
